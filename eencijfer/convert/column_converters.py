@@ -1,8 +1,9 @@
 """Converters for columns on read-time."""
 
+import logging
 import numpy as np
 import pandas as pd
-
+logger = logging.getLogger(__name__)
 from eencijfer import column_converter
 
 
@@ -24,12 +25,19 @@ def convert_to_int64(x):
     """Convert column to int64.
 
     Args:
-        x (pd.Series): column
+        x (str): value to convert
 
     Returns:
-        pd.Series: all values will be int64
+        int or pd.NA: converted integer value or pd.NA for invalid/empty inputs
     """
-    return int(x)
+    if pd.isna(x) or x.strip() == '':
+        return pd.NA
+    try:
+        return int(x)
+    except ValueError:
+        # Log the problematic value
+        logger.warning(f"Unable to convert '{x}' to int64. Returning pd.NA.")
+        return pd.NA
 
 
 @column_converter
