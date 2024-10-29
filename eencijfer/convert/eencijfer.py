@@ -130,90 +130,6 @@ def _create_definition_with_converter(
         definition["ConvertFunction"] = definition["ConvertFunction"].fillna(CONVERTERS['convert_to_object'])
     return definition
 
-
-def read_asc(fpath: Path, definition_file: Path, use_column_converters: bool = False) -> pd.DataFrame:
-    """Reads in asc-file based on definition-file.
-
-    Converters contain column-names, widths and column-converters which are used for
-    converting data to the right datatype. For example: convert strings to int64 or
-    set a '0-value' as a missing (NaN).
-
-    Args:
-        fpath (Path): Path to asc-file.
-        definition_file (Path): Path to definition-file.
-        use_column_converters (Boolean): wether to use column_converters defined in the definition-file or not.
-
-    Returns:
-        pd.DataFrame: df with data from asc-file.
-    """
-
-    definition = _create_definition_with_converter(definition_file)
-
-    widths = definition["NumberOfPositions"].tolist()
-    names = definition["Label"].tolist()
-    column_converters = pd.Series(definition.ConvertFunction.values, index=definition.Label).to_dict()
-    logger.info(f"...start reading {fpath.name}")
-
-    try:
-        # if column_converters should be used, use them...
-        if use_column_converters:
-            logger.info(f"...using column converters for {fpath.name}")
-            data = pd.read_fwf(
-                fpath,
-                widths=widths,
-                names=names,
-                converters=column_converters,
-                encoding="latin1",
-            )
-        else:
-            logger.info(f"...import all columns as strings from {fpath.name}")
-            data = pd.read_fwf(
-                fpath,
-                widths=widths,
-                names=names,
-                dtype='str',
-                encoding="latin1",
-            )
-
-        if len(data) == 0:
-            logger.info(f"...no data found in {fpath.name}")
-        else:
-            logger.info(f"...data was read from {fpath.name}")
-            # A column is added at the end of the definition file, that will
-            # catch data that is not defined in the definition file. If there is
-            # data in the GarbageColumn this means the definition file does not contain
-            # the right definitions (otherwise all the data would fit into the defined
-            # columns).
-            # Later on the GarbageColumn will be removed if it is empty.
-
-            number_of_not_null_values_in_garbage_columns = data.GarbageColumn.notnull().sum()
-            if number_of_not_null_values_in_garbage_columns > 0:
-                logger.critical(f'!!!! The garbage-column for {fpath.name} is not empty, check your definitions !!!')
-                logger.critical('!!!! Below are some examples of the rows with non-empty GarbageColumns !!!')
-                logger.critical(' ')
-                examples_non_empty_garbage_columns = data[data.GarbageColumn.notnull()].head(10)
-                logger.critical(f'{examples_non_empty_garbage_columns}')
-                logger.critical(f"{examples_non_empty_garbage_columns.GarbageColumn}")
-                logger.critical('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
-                logger.critical(
-                    f'!!!! ❌ ❌ ❌ The garbage-column for {fpath.name} is not empty, check your definitions ❌ ❌ ❌!!!'
-                )
-                logger.critical('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
-                raise AssertionError(
-                    f'!!!! The garbage-column for {fpath.name} is not empty, check your definitions !!!'
-                )
-            else:
-                logger.debug("No garbage detected.")
-                logger.debug(f'The garbage-column for {fpath.name} is empty, removing GarbageColumn from dataframe.')
-                del data['GarbageColumn']
-
-    except Exception as e:
-        logger.warning(f"...reading of {fpath.name} failed.")
-        logger.warning(f"{e}")
-
-    return data
-
-
 def _convert_to_parquet(
     source_dir: Path,
     result_dir: Path,
@@ -268,3 +184,101 @@ def _convert_to_parquet(
 
         logger.info("**************************************")
     return None
+
+
+
+def read_asc(fpath: Path, definition_file: Path, use_column_converters: bool = False) -> pd.DataFrame:
+    """Reads in asc-file based on definition-file.
+
+    Converters contain column-names, widths and column-converters which are used for
+    converting data to the right datatype. For example: convert strings to int64 or
+    set a '0-value' as a missing (NaN).
+
+    Args:
+        fpath (Path): Path to asc-file.
+        definition_file (Path): Path to definition-file.
+        use_column_converters (bool): whether to use column_converters defined in the definition-file or not.
+
+    Returns:
+        pd.DataFrame: df with data from asc-file.
+    """
+
+    definition = _create_definition_with_converter(definition_file)
+
+    widths = definition["NumberOfPositions"].tolist()
+    names = definition["Label"].tolist()
+    column_converters = pd.Series(definition.ConvertFunction.values, index=definition.Label).to_dict()
+    logger.info(f"...start reading {fpath.name}")
+
+    skipped_rows = []
+    
+    def safe_convert(func):
+        def wrapper(value):
+            try:
+                return func(value)
+            except ValueError:
+                skipped_rows.append(value)
+                return pd.NA
+        return wrapper
+
+    if use_column_converters:
+        safe_converters = {col: safe_convert(conv) for col, conv in column_converters.items()}
+    else:
+        safe_converters = None
+
+    try:
+        if use_column_converters:
+            logger.info(f"...using column converters for {fpath.name}")
+            data = pd.read_fwf(
+                fpath,
+                widths=widths,
+                names=names,
+                converters=safe_converters,
+                encoding="latin1",
+            )
+        else:
+            logger.info(f"...import all columns as strings from {fpath.name}")
+            data = pd.read_fwf(
+                fpath,
+                widths=widths,
+                names=names,
+                dtype='str',
+                encoding="latin1",
+            )
+
+        if len(data) == 0:
+            logger.info(f"...no data found in {fpath.name}")
+        else:
+            logger.info(f"...data was read from {fpath.name}")
+            
+            if 'GarbageColumn' in data.columns:
+                number_of_not_null_values_in_garbage_columns = data.GarbageColumn.notnull().sum()
+                if number_of_not_null_values_in_garbage_columns > 0:
+                    logger.critical(f'!!!! The garbage-column for {fpath.name} is not empty, check your definitions !!!')
+                    logger.critical('!!!! Below are some examples of the rows with non-empty GarbageColumns !!!')
+                    logger.critical(' ')
+                    examples_non_empty_garbage_columns = data[data.GarbageColumn.notnull()].head(10)
+                    logger.critical(f'{examples_non_empty_garbage_columns}')
+                    logger.critical(f"{examples_non_empty_garbage_columns.GarbageColumn}")
+                    logger.critical('❌' * 80)
+                    logger.critical(
+                        f'!!!! ❌ ❌ ❌ The garbage-column for {fpath.name} is not empty, check your definitions ❌ ❌ ❌!!!'
+                    )
+                    logger.critical('❌' * 80)
+                    raise AssertionError(
+                        f'!!!! The garbage-column for {fpath.name} is not empty, check your definitions !!!'
+                    )
+                else:
+                    logger.debug("No garbage detected.")
+                    logger.debug(f'The garbage-column for {fpath.name} is empty, removing GarbageColumn from dataframe.')
+                    del data['GarbageColumn']
+
+        if skipped_rows:
+            logger.warning(f"Skipped {len(skipped_rows)} rows due to conversion errors in {fpath.name}")
+            logger.warning(f"First few skipped values: {skipped_rows[:5]}")
+
+    except Exception as e:
+        logger.warning(f"...reading of {fpath.name} failed.")
+        logger.warning(f"{e}")
+
+    return data
