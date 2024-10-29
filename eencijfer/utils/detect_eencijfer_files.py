@@ -32,12 +32,11 @@ def _get_list_of_eencijfer_files_in_dir(source_dir: Path) -> Optional[list]:
     of files that match the names of the files in the definition-dir.
 
     Args:
-        config (configparser.ConfigParser, optional): _description_. Defaults to config.
+        source_dir (Path): Path to source_dir.
 
     Returns:
         Optional[list]: List of files that are recognized as eencijfer-files.
     """
-    #    source_dir = config.getpath('default', 'source_dir')
     files = None
 
     possible_files = _get_list_of_definition_files()
