@@ -131,7 +131,7 @@ def _convert_to_export_format(
             else:
                 logger.info(f"...there does not seem to be data in {file.name}!")
         except Exception as e:
-            logger.warning(f"...inlezen van {file.name} mislukt.")
+            logger.warning(f"...reading of {file.name} failed.")
             logger.warning(f"{e}")
 
         logger.info("**************************************")

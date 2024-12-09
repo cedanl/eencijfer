@@ -146,7 +146,7 @@ def _convert_to_parquet(
         fname (str, optional): The filename to use for saving. Defaults to "unknown".
         export_format (str, optional): The export format to use. Defaults to 'parquet'.
         config (configparser.ConfigParser, optional): The configuration parser
-          containing the result directory. Defaults to config.
+        containing the result directory. Defaults to config.
 
     Returns:
         None: This function does not return a value.
@@ -179,7 +179,7 @@ def _convert_to_parquet(
             else:
                 logger.info(f"...there does not seem to be data in {file.name}!")
         except Exception as e:
-            logger.warning(f"...inlezen van {file.name} mislukt.")
+            logger.warning(f"...reading of {file.name} failed.")
             logger.warning(f"{e}")
 
         logger.info("**************************************")
