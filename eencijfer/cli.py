@@ -139,7 +139,7 @@ def create_assets(export_format: ExportFormat = ExportFormat.parquet):
 
     eencijfer = _create_eencijfer_df(source_dir=source_dir)
     _save_to_file(eencijfer, dir=assets_dir, fname='eencijfer', export_format=export_format)
-    cohorten = create_cohorten_met_indicatoren(source_dir=source_dir)
+    cohorten = create_cohorten_met_indicatoren(source_dir=source_dir, eencijfer=eencijfer)
     _save_to_file(cohorten, dir=assets_dir, fname='cohorten', export_format=export_format)
     eindexamencijfers = _create_eindexamencijfer_df(source_dir=source_dir)
     _save_to_file(
@@ -148,3 +148,26 @@ def create_assets(export_format: ExportFormat = ExportFormat.parquet):
         fname='eindexamencijfers',
         export_format=export_format,
     )
+
+@app.command()
+def run_pipeline(export_format: ExportFormat = ExportFormat.parquet):
+    """Run the entire pipeline: init, convert, and create-assets."""
+    try:
+        typer.echo("Initializing the project...")
+        init()
+    except Exception as e:
+        logger.error(f"Failed to initialize the project: {e}")
+
+    try:
+        typer.echo("Converting data to the specified export format...")
+        convert(export_format=export_format)
+    except Exception as e:
+        logger.error(f"Failed to convert data: {e}")
+
+    try:
+        typer.echo("Creating data-assets and saving them to assets-directory...")
+        create_assets(export_format=export_format)
+    except Exception as e:
+        logger.error(f"Failed to create data-assets: {e}")
+
+    typer.echo("Pipeline execution completed.")
