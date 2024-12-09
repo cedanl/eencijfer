@@ -12,7 +12,7 @@ from eencijfer.settings import config
 logger = logging.getLogger(__name__)
 
 
-def create_actief_hoofd_eerstejaar_instelling(source_dir: Path) -> pd.DataFrame:
+def create_actief_hoofd_eerstejaar_instelling(source_dir: Path, eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Create df with actieve hoofdinschrijving, eerste jaar instelling.
 
     Every student occurs only once every year (cohort year). Only
@@ -22,7 +22,7 @@ def create_actief_hoofd_eerstejaar_instelling(source_dir: Path) -> pd.DataFrame:
         pd.DataFrame: Dataframe.
     """
     # Actief op 1 oktober
-    eencijfer = _create_eencijfer_df(source_dir)
+    # eencijfer = _create_eencijfer_df(source_dir)
     filter_actiefopPeildatum = eencijfer.IndicatieActiefOpPeildatum == 1
     # Hoofdinschrijving
     filter_soortinschrijving_ho = eencijfer.SoortInschrijvingHogerOnderwijs == 1
@@ -35,13 +35,13 @@ def create_actief_hoofd_eerstejaar_instelling(source_dir: Path) -> pd.DataFrame:
     return instroom
 
 
-def create_inschrijving_jaar2(source_dir: Path) -> pd.DataFrame:
+def create_inschrijving_jaar2(source_dir: Path, eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Filters eencijfer for second year institution with hoofdopleiding.
 
     Returns:
         pd.DataFrame: Df with hoofdinschrijvingen in year 2.
     """
-    eencijfer = _create_eencijfer_df(source_dir)
+    # eencijfer = _create_eencijfer_df(source_dir)
 
     filter_tweede_jaar = eencijfer.Inschrijvingsjaar == eencijfer.EersteJaarAanDezeActueleInstelling + 1
     filter_soortinschrijving_ho = eencijfer.SoortInschrijvingHogerOnderwijs == 1
@@ -58,14 +58,14 @@ def create_inschrijving_jaar2(source_dir: Path) -> pd.DataFrame:
     return inschrijvingen_tweede_jaar
 
 
-def create_propedeuse_diplomas() -> pd.DataFrame:
+def create_propedeuse_diplomas(eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Create a table with propedeuse-diplomas.
 
     Returns:
         pd.DataFrame: _description_
     """
-    source_dir = config.getpath('default', 'source_dir')
-    eencijfer = _create_eencijfer_df(source_dir)
+    # source_dir = config.getpath('default', 'source_dir')
+    # eencijfer = _create_eencijfer_df(source_dir)
 
     fields = [
         "PersoonsgebondenNummer",
@@ -148,7 +148,7 @@ def create_bachelordiplomas(eencijfer: pd.DataFrame) -> pd.DataFrame:
     return bachelordiplomas
 
 
-def add_propedeuse_in_1_jaar(data: pd.DataFrame) -> pd.DataFrame:
+def add_propedeuse_in_1_jaar(data: pd.DataFrame, eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Add 1/0 column with propedeuse in 1 year and Uitval1JaarMetPropedeuse.
 
     Args:
@@ -159,7 +159,7 @@ def add_propedeuse_in_1_jaar(data: pd.DataFrame) -> pd.DataFrame:
     """
 
     # p_diploma = data.OpleidingsfaseActueelVanHetDiploma=='D'
-    p_diplomas = create_propedeuse_diplomas()
+    p_diplomas = create_propedeuse_diplomas(eencijfer)
     pgn_p_in_cohort_jaar = p_diplomas[
         p_diplomas.EersteJaarAanDezeActueleInstelling == p_diplomas.JaarPropedeuseDiploma
     ].PersoonsgebondenNummer.tolist()
@@ -299,7 +299,7 @@ def _add_status_student(data: pd.DataFrame, field: str = "StatusNa1Jaar") -> pd.
     return data
 
 
-def create_cohorten_met_indicatoren(source_dir: Path) -> pd.DataFrame:
+def create_cohorten_met_indicatoren(source_dir: Path, eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Create cohorten-table from all parts.
 
     Returns:
@@ -307,10 +307,10 @@ def create_cohorten_met_indicatoren(source_dir: Path) -> pd.DataFrame:
     """
 
     """Levert een cohortbestand met indicatoren eerste jaar."""
-    eencijfer = _create_eencijfer_df(source_dir)
-    instroom = create_actief_hoofd_eerstejaar_instelling(source_dir)
-    inschrijvingen_tweede_jaar = create_inschrijving_jaar2(source_dir)
-    # propedeusediplomas = _propedeuse_diplomas(eencijfer)
+    # eencijfer = _create_eencijfer_df(source_dir)
+    instroom = create_actief_hoofd_eerstejaar_instelling(source_dir, eencijfer)
+    inschrijvingen_tweede_jaar = create_inschrijving_jaar2(source_dir, eencijfer)
+    propedeusediplomas = create_propedeuse_diplomas(eencijfer)
     bachelordiplomas = create_bachelordiplomas(eencijfer)
 
     result = merge_cohort_inschrijving_jaar2(instroom, inschrijvingen_tweede_jaar)
@@ -342,7 +342,7 @@ def create_cohorten_met_indicatoren(source_dir: Path) -> pd.DataFrame:
         raise Exception('Something went wrong with merge.')
 
     # diploma in 1 jaar:
-    result = add_propedeuse_in_1_jaar(result)
+    result = add_propedeuse_in_1_jaar(result, eencijfer)
 
     result = _add_herinschrijver_met_propedeuse(result)
 

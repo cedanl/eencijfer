@@ -12,6 +12,60 @@ HERE = Path(__file__).parent.absolute()
 DATASETS_DIR = HERE / "datasets"
 logger = logging.getLogger(__name__)
 
+def _add_naam_actuele_instelling(eencijfer: pd.DataFrame) -> pd.DataFrame:
+    """Add column with name of institution.
+    
+    Args:
+        eencijfer (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+
+    logger.debug("Controleer of Dec_actuele_instelling maar 1 naam per Croho bevat.")     
+    source_dir = config.getpath('default', 'source_dir')
+    Dec_actuele_instelling = pd.read_parquet(source_dir / 'Dec_actuele_instelling.parquet')
+
+    if not len(Dec_actuele_instelling) == Dec_actuele_instelling.Instellingscode.nunique():
+        raise Exception('Something went, Dec_actuele_instelling is not unique.')
+    
+    result = pd.merge(
+        eencijfer,
+        Dec_actuele_instelling,
+        left_on="ActueleInstelling",
+        right_on="ActueleInstelling",
+        how="left",
+        suffixes=["", "_instelling"],
+    )
+    
+    # logger.debug("Controleer het resultaat...")
+    # logger.debug("... geen missende namen")
+    # if not result.NaamOpleiding.isnull().sum() == 0:
+    #     raise Exception("Niet alle opleidingen hebben een naam")
+
+    # if result.NaamOpleiding.isnull().sum() > 0:
+    #     opleidingen_zonder_naam = result[result.NaamOpleiding.isnull()][
+    #         [
+    #             "OpleidingActueelEquivalent",
+    #         ]
+    #     ].drop_duplicates()
+
+    #     logger.info("Er zijn opleidingen zonder naam:")
+    #     logger.info(f"{opleidingen_zonder_naam}")
+    #     logger.info("Missende waarden worden op 'onbekend' gezet.")
+    #     result.NaamOpleiding.fillna("onbekend", inplace=True)
+
+    # logger.info("Hernoem NaamOpleiding naar NaamOpleidingCroho")
+    # result.rename(columns={"NaamOpleiding": "NaamOpleidingCroho"}, inplace=True)
+
+    # removable_cols = [col for col in result.columns if "_opleiding" in col]
+    # for col in removable_cols:
+    #     del result[col]
+
+    nieuwe_cols = set(result.columns) - set(eencijfer.columns)
+    logger.info("De volgende kolommen zijn toegevoegd:")
+    logger.info(f"{nieuwe_cols}")
+    return result
 
 def _add_naam_opleiding(eencijfer: pd.DataFrame) -> pd.DataFrame:
     """Add column with Croho-name.
@@ -29,7 +83,6 @@ def _add_naam_opleiding(eencijfer: pd.DataFrame) -> pd.DataFrame:
     if not len(Dec_isat) == Dec_isat.Opleidingscode.nunique():
         raise Exception('Something went, Isat is not unique.')
 
-    logger.debug("Merge eencijfer met Dec_isat")
     result = pd.merge(
         eencijfer,
         Dec_isat,

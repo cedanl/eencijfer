@@ -1,6 +1,7 @@
 """Eencijfer data asset."""
 
 import logging
+import colorlog
 from pathlib import Path
 
 import pandas as pd
@@ -18,8 +19,22 @@ from eencijfer.assets.transformations.prestatieafspraken import _add_pa_cohort
 from eencijfer.assets.transformations.vooropleiding import _add_naam_instelling_vooropleiding, _add_vooropleiding
 from eencijfer.utils.detect_eencijfer_files import _get_eencijfer_datafile
 
-logger = logging.getLogger(__name__)
+# Configure colorlog
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+    "%(log_color)s%(levelname)s:%(name)s:%(message)s",
+    log_colors={
+        'DEBUG': 'cyan',
+        'INFO': 'green',
+        'WARNING': 'yellow',
+        'ERROR': 'red',
+        'CRITICAL': 'red,bg_white',
+    }
+))
 
+logger = colorlog.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 def _create_eencijfer_df(source_dir: Path):
     """Pipeline voor verrijken van eencijfer-basisbestand."""
@@ -41,14 +56,51 @@ def _create_eencijfer_df(source_dir: Path):
         vooropleiding="HoogsteVooropleiding",
     )
     # voeg informatie over inschrijving toe:
-    eencijfer = _add_naam_opleiding(eencijfer)
-    eencijfer = _add_opleiding(eencijfer)
-    eencijfer = _add_croho_onderdeel(eencijfer)
-    eencijfer = _add_soort_diploma(eencijfer)
-    eencijfer = _add_ho_diploma_eerstejaar(eencijfer)
-    eencijfer = _add_type_opleiding(eencijfer)
-    eencijfer = _add_lokale_naam_opleiding_faculteit(eencijfer)
-    eencijfer = _add_pa_cohort(eencijfer)
-    eencijfer = _add_isced(eencijfer)
+    try:
+        eencijfer = _add_naam_opleiding(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add naam opleiding: {e}")
+
+    try:
+        eencijfer = _add_opleiding(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add opleiding: {e}")
+
+    try:
+        eencijfer = _add_croho_onderdeel(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add croho onderdeel: {e}")
+
+    try:
+        eencijfer = _add_soort_diploma(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add soort diploma: {e}")
+
+    try:
+        eencijfer = _add_ho_diploma_eerstejaar(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add ho diploma eerstejaar: {e}")
+
+    try:
+        eencijfer = _add_type_opleiding(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add type opleiding: {e}")
+
+    try:
+        eencijfer = _add_lokale_naam_opleiding_faculteit(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add lokale naam opleiding faculteit: {e}")
+
+    try:
+        eencijfer = _add_pa_cohort(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add pa cohort: {e}")
+
+    try:
+        eencijfer = _add_isced(eencijfer)
+    except Exception as e:
+        logger.error(f"Failed to add isced: {e}")
+
+    logger.critical(f"Columns in eencijfer: {eencijfer.columns}")
 
     return eencijfer
