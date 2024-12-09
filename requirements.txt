@@ -1,3 +1,4 @@
 pandas
 typer
 cmake
+colorlog
