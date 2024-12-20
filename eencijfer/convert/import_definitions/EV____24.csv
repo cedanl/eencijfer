@@ -83,7 +83,7 @@ IndicatieEerstejaarsContinuHogerOnderwijs,221,1,convert_to_int64
 IndicatieEerstejaarsContinuSoortHo,222,1,convert_to_int64
 IndicatieEerstejaarsContinuActueleInstelling,223,1,convert_to_int64
 IndicatieEerstejaarsContinuTypeHoBinnenHo,224,1,convert_to_int64
-IndicatieSoortProgramma,225,1,convert_to_int64
+IndicatieSoortProgramma,225,1,convert_to_object
 DatumInschrijving,226,8,convert_to_date
 DatumUitschrijving,234,8,convert_to_date
 Vestigingsnummer,242,2,convert_to_object
