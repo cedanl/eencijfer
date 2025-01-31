@@ -61,6 +61,25 @@ def _determine_vooropleiding(string: str) -> str:
         return "overig"
 
 
+# def _add_vooropleiding_kort(
+#     Dec_vopl: pd.DataFrame,
+#     source_column: str = "OmschrijvingVooropleiding",
+#     new_column: str = "Vooropleiding",
+# ) -> pd.DataFrame:
+#     """Add short notation of vooropleiding.
+
+#     Args:
+#         Dec_vopl (pd.DataFrame): _description_
+#         source_column (str, optional): _description_. Defaults to "OmschrijvingVooropleiding".
+#         new_column (str, optional): _description_. Defaults to "Vooropleiding".
+
+#     Returns:
+#         pd.DataFrame: _description_
+#     """
+#     logger.info("...voeg korte omschrijving vooropleiding toe (mbo, vwo, etc)")
+#     Dec_vopl[new_column] = Dec_vopl[source_column].apply(_determine_vooropleiding)
+#     return Dec_vopl
+
 def _add_vooropleiding_kort(
     Dec_vopl: pd.DataFrame,
     source_column: str = "OmschrijvingVooropleiding",
@@ -76,8 +95,31 @@ def _add_vooropleiding_kort(
     Returns:
         pd.DataFrame: _description_
     """
+    # Before check
+    initial_shape = Dec_vopl.shape
+    logger.info(f"Initial DataFrame shape: {initial_shape}")
+    
     logger.info("...voeg korte omschrijving vooropleiding toe (mbo, vwo, etc)")
     Dec_vopl[new_column] = Dec_vopl[source_column].apply(_determine_vooropleiding)
+    
+    # After check
+    final_shape = Dec_vopl.shape
+    logger.info(f"Final DataFrame shape: {final_shape}")
+    
+    # Verify if the new column was added
+    if new_column in Dec_vopl.columns:
+        logger.info(f"New column '{new_column}' successfully added")
+    else:
+        logger.warning(f"New column '{new_column}' was not added")
+    
+    # Check if the number of rows changed (which shouldn't happen in this case)
+    if initial_shape[0] != final_shape[0]:
+        logger.warning(f"Number of rows changed from {initial_shape[0]} to {final_shape[0]}")
+    
+    # Check if the number of columns increased by 1
+    if final_shape[1] != initial_shape[1] + 1:
+        logger.warning(f"Unexpected change in number of columns. Before: {initial_shape[1]}, After: {final_shape[1]}")
+    
     return Dec_vopl
 
 
